@@ -12,6 +12,7 @@ set(KERNEL_NAME krnl_${HOST_NAME} CACHE STRING "Kernel name default krnl_HOST_NA
 
 # From Step in v++
 set(VPP_FROM_STEP "system_link" CACHE STRING "From step in v++ compilation.")
+# set(VPP_KERNEL_FREQ "300" CACHE STRING "Kernel frequency.")
 
 # Common src and head that comes with Xilinx VITIS example
 set(OCL_COMMON_SRC ${CMAKE_CURRENT_SOURCE_DIR}/common/includes/xcl2/xcl2.cpp)

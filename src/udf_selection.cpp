@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
     // the first HBM line is reserved for status
     addr_t out_addr = out_column.m_hbm_offset[i]+1;
     // FIXME: exact line number
-    unsigned num_in_lines = in_column.m_num_lines[i]
+    unsigned num_in_lines = in_column.m_num_lines[i];
     krnl_udf_selection(hbm_memory, in_addr, out_addr, status_addr, num_in_lines,
                      lower, upper);
   }
