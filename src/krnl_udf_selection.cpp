@@ -6,8 +6,14 @@ inline void select_write_hbm_line(hbm_t *p_hbm, addr_t hbm_addr,
   p_hbm[hbm_addr] = line(BITS_IN_HBM_LINE - 1, 0);
 }
 
+inline void select_write_dram_line(dram_t *p_dram, addr_t dram_addr,
+                                  ap_uint<BITS_IN_LINE> line) {
+  p_dram[dram_addr] = line(BITS_IN_HBM_LINE - 1, 0);
+}
+
+
 void select_read_hbm_to_stream(hls::stream<ap_uint<BITS_IN_LINE>> &out_stream,
-                               hbm_t *p_hbm, addr_t hbm_addr,
+                               const hbm_t *p_hbm, addr_t hbm_addr,
                                unsigned size_in_lines) {
   ap_uint<BITS_IN_LINE> temp = 0;
   unsigned k = 0;
@@ -28,6 +34,19 @@ void select_write_stream_to_hbm(hls::stream<ap_uint<BITS_IN_LINE>> &in_stream,
 #pragma HLS PIPELINE II = 1
     temp = in_stream.read();
     p_hbm[hbm_addr + k] = temp(BITS_IN_HBM_LINE - 1, 0);
+    k++;
+  }
+}
+
+void select_write_stream_to_dram(hls::stream<ap_uint<BITS_IN_LINE>> &in_stream,
+                                dram_t *p_dram, addr_t dram_addr,
+                                unsigned size_in_lines) {
+  ap_uint<BITS_IN_LINE> temp = 0;
+  unsigned k = 0;
+  while (k < size_in_lines) {
+#pragma HLS PIPELINE II = 1
+    temp = in_stream.read();
+    p_dram[dram_addr + k] = temp(BITS_IN_HBM_LINE - 1, 0);
     k++;
   }
 }
@@ -69,7 +88,7 @@ void select_core(hls::stream<ap_uint<BITS_IN_LINE>> &in_stream,
   }
 }
 
-void select_pipeline(hbm_t *p_hbm, addr_t input_addr,
+void select_pipeline(const hbm_t *p_hbm, addr_t input_addr,
                      unsigned num_to_process_lines,
                      unsigned indexes[PARALLELISM][BUFFER_SIZE],
                      unsigned fill_state[PARALLELISM], unsigned &offset,
@@ -100,13 +119,13 @@ void gather_all(hls::stream<ap_uint<BITS_IN_LINE>> &out_stream,
   }
 }
 
-void write_pipeline(hbm_t *p_hbm, addr_t output_addr,
+void write_pipeline(dram_t *p_dram, addr_t output_addr,
                     unsigned indexes[PARALLELISM][BUFFER_SIZE],
                     unsigned fill_state[PARALLELISM], unsigned max_fill_state) {
 #pragma HLS DATAFLOW
   hls::stream<ap_uint<BITS_IN_LINE>> out_stream("out_stream");
   gather_all(out_stream, indexes, fill_state, max_fill_state);
-  select_write_stream_to_hbm(out_stream, p_hbm, output_addr, max_fill_state);
+  select_write_stream_to_dram(out_stream, p_dram, output_addr, max_fill_state);
 }
 
 inline unsigned CEILING(unsigned value, unsigned log2_divider) {
@@ -115,9 +134,8 @@ inline unsigned CEILING(unsigned value, unsigned log2_divider) {
 }
 
 
-extern "C" {
-void krnl_udf_selection(hbm_t *p_hbm,
-                        // dram_t* p_dram,
+void krnl_udf_selection(const hbm_t *p_hbm, //read-only hbm (can save datapath?)
+                        dram_t* p_dram,
                         const addr_t input_addr, 
                         const addr_t output_addr,
                         const addr_t status_addr, 
@@ -126,8 +144,10 @@ void krnl_udf_selection(hbm_t *p_hbm,
                         const int upper) {
 
 #pragma HLS INTERFACE m_axi port = p_hbm offset = slave bundle = gmem0
+#pragma HLS INTERFACE m_axi port = p_dram offset = slave bundle = gmem1
 
 #pragma HLS INTERFACE s_axilite port = p_hbm
+#pragma HLS INTERFACE s_axilite port = p_dram  
 #pragma HLS INTERFACE s_axilite port = input_addr
 #pragma HLS INTERFACE s_axilite port = output_addr
 #pragma HLS INTERFACE s_axilite port = status_addr
@@ -182,7 +202,7 @@ void krnl_udf_selection(hbm_t *p_hbm,
       }
     }
 
-    write_pipeline(p_hbm, output_addr + num_out_lines, indexes, fill_state,
+    write_pipeline(p_dram, output_addr + num_out_lines, indexes, fill_state,
                    max_fill_state);
 
     num_out_lines += max_fill_state;
@@ -193,6 +213,5 @@ void krnl_udf_selection(hbm_t *p_hbm,
   status_line(31, 0) = positives;
   status_line(63, 32) = num_out_lines;
 
-  select_write_hbm_line(p_hbm, status_addr, status_line);
-}
+  select_write_dram_line(p_dram, status_addr, status_line);
 }
