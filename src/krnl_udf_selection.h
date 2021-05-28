@@ -1,4 +1,5 @@
-// #pragma once
+#ifndef _KERNEL_UDF_SELECTION_H
+#define _KERNEL_UDF_SELECTION_H
 
 #include <hls_stream.h>
 #include <ap_int.h>
@@ -26,10 +27,14 @@ const unsigned INTS_IN_HBM_LINE =        (1 << LOG2_INTS_IN_HBM_LINE);
 const unsigned LOG2_INTS_IN_LINE =       (LOG2_BYTES_IN_LINE - LOG2_BYTES_IN_INT);
 const unsigned INTS_IN_LINE =            (1 << LOG2_INTS_IN_LINE);
 
-void krnl_udf_selection(const hbm_t *p_hbm, //read-only hbm (can save datapath?)
+extern "C" {
+void krnl_udf_selection(hbm_t *p_hbm, //read-only hbm (can save datapath?)
                         const addr_t input_addr, 
                         const addr_t output_addr,
                         const addr_t status_addr, 
                         const unsigned num_in_lines, 
                         const int lower,
                         const int upper);
+}
+
+#endif
