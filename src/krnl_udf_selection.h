@@ -27,7 +27,6 @@ const unsigned LOG2_INTS_IN_LINE =       (LOG2_BYTES_IN_LINE - LOG2_BYTES_IN_INT
 const unsigned INTS_IN_LINE =            (1 << LOG2_INTS_IN_LINE);
 
 void krnl_udf_selection(const hbm_t *p_hbm, //read-only hbm (can save datapath?)
-                        dram_t* p_dram,
                         const addr_t input_addr, 
                         const addr_t output_addr,
                         const addr_t status_addr, 
