@@ -11,6 +11,8 @@ using namespace std;
 
 #define HBM_SIZE 32768
 
+#define NUM_KERNEL 32
+
 void datamover_write(hbm_t *hbm_memory, hbm_column<int> *in) {
   cout << "in->m_num_partitions: " << in->m_num_partitions << endl;
 

@@ -3,7 +3,7 @@
 
 inline void select_write_hbm_line(hbm_t *p_hbm, addr_t hbm_addr,
                                   ap_uint<BITS_IN_LINE> line) {
-  p_hbm[hbm_addr] = line(BITS_IN_HBM_LINE - 1, 0);
+  p_hbm[hbm_addr] = line(BITS_IN_LINE - 1, 0);
 }
 
 void select_read_hbm_to_stream(hls::stream<ap_uint<BITS_IN_LINE>> &out_stream,
@@ -13,7 +13,7 @@ void select_read_hbm_to_stream(hls::stream<ap_uint<BITS_IN_LINE>> &out_stream,
   unsigned k = 0;
   while (k < size_in_lines) {
 #pragma HLS PIPELINE II = 1
-    temp(BITS_IN_HBM_LINE - 1, 0) = p_hbm[hbm_addr + k];
+    temp(BITS_IN_LINE - 1, 0) = p_hbm[hbm_addr + k];
     out_stream.write(temp);
     k++;
   }
@@ -27,7 +27,7 @@ void select_write_stream_to_hbm(hls::stream<ap_uint<BITS_IN_LINE>> &in_stream,
   while (k < size_in_lines) {
 #pragma HLS PIPELINE II = 1
     temp = in_stream.read();
-    p_hbm[hbm_addr + k] = temp(BITS_IN_HBM_LINE - 1, 0);
+    p_hbm[hbm_addr + k] = temp(BITS_IN_LINE - 1, 0);
     k++;
   }
 }

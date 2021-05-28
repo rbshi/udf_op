@@ -11,8 +11,6 @@ using namespace std;
 #define ALIGNMENT BYTES_IN_LINE * 2
 const uint32_t HBM_PORT_LINES = 2048; // 2048 lines
 
-#define NUM_KERNEL 32
-
 typedef struct {
   uint32_t m_id;
   int m_value;
