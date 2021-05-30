@@ -6,12 +6,14 @@ using namespace std;
 
 // #define DEBUG
 
+#define NUM_KERNEL 32
+
 #include "krnl_udf_selection.h"
 #include "hbm_column.hpp"
 
 #define HBM_SIZE 32768
 
-#define NUM_KERNEL 32
+
 
 void datamover_write(hbm_t *hbm_memory, hbm_column<int> *in) {
   cout << "in->m_num_partitions: " << in->m_num_partitions << endl;
@@ -98,7 +100,7 @@ int main(int argc, char *argv[]) {
     // FIXME: exact line number
     unsigned num_in_lines = in_column.m_num_lines[i];
     krnl_udf_selection(hbm_memory, in_addr, out_addr, status_addr, num_in_lines,
-                     lower, upper);
+                     lower, upper, 10);
   }
 
   // m_num_lines[0] have the average value

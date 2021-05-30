@@ -31,7 +31,7 @@ const int pc[MAX_HBM_PC_COUNT + 4] = {
     PC_NAME(37)};
 
 void datamover_write(std::vector<unsigned int, aligned_allocator<unsigned int>> *src_d_hbm, hbm_column<int> *in) {
-  cout << "in->m_num_partitions: " << in->m_num_partitions << endl;
+  // cout << "in->m_num_partitions: " << in->m_num_partitions << endl;
 
   uint32_t item_count = 0;
   for (uint32_t p = 0; p < in->m_num_partitions; p++) {
@@ -46,16 +46,17 @@ void datamover_write(std::vector<unsigned int, aligned_allocator<unsigned int>> 
 
 void datamover_read(std::vector<unsigned int, aligned_allocator<unsigned int>> *src_d_hbm, hbm_column<uint32_t> *out, unsigned num_in_lines) {
   // out->column_realloc(num_lines*INTS_IN_LINE);
-  cout << "out->m_total_num_lines: " << out->m_total_num_lines << endl;
+  // cout << "out->m_total_num_lines: " << out->m_total_num_lines << endl;
   for (uint32_t p = 0; p < out->m_num_partitions; p++) {
     // obtain the num_lines, num_possitivies is ignored
-    uint32_t num_lines = src_d_hbm[p][out->m_base_hbm_offset * INTS_IN_HBM_LINE + 1];
-    cout << "num_lines: " << num_lines << endl;
+    // cout << "out addr of buffer" << p << "=" << out->m_hbm_offset[p] * INTS_IN_HBM_LINE << endl;
+    uint32_t num_lines = src_d_hbm[p][out->m_hbm_offset[p] * INTS_IN_HBM_LINE + 1];
+    // cout << "num_lines: " << num_lines << endl;
     // uint32_t num_lines = (uint32_t)hbm_memory[out->m_hbm_offset[p]](63, 32);
     for (uint32_t i =0; i < num_lines; i++) {
       for (uint32_t j = 0; j < INTS_IN_HBM_LINE; j++) {
         // NOTE: +1 due to the status address
-        uint32_t temp = src_d_hbm[p][(out->m_base_hbm_offset + 1 + i) * INTS_IN_HBM_LINE + j];
+        uint32_t temp = src_d_hbm[p][(out->m_hbm_offset[p] + 1 + i) * INTS_IN_HBM_LINE + j];
         // uint32_t temp = (uint32_t)hbm_memory[out->m_hbm_offset[p] + 1 + i](
         //     BITS_IN_INT * (j + 1) - 1, BITS_IN_INT * j);
         if (temp != 0xFFFFFFFF)
@@ -69,6 +70,9 @@ void datamover_read(std::vector<unsigned int, aligned_allocator<unsigned int>> *
 int main(int argc, char *argv[]) {
 
   unsigned num_values = 1024;
+  
+  int num_times = 128;
+
   int lower = 0;
   int upper = 0;
   if (argc != 5) {
@@ -157,7 +161,7 @@ int main(int argc, char *argv[]) {
 
   // Input
   hbm_column<int> in_column(num_values, 0);
-  in_column.populate_int_column(num_values, 'm', '-', 0xDEADBEEF);
+  in_column.populate_int_column(num_values, 'v', 's', 0xDEADBEEF);
 
   // Output
   hbm_column<uint32_t> out_column(num_values, in_column.m_base_hbm_offset +
@@ -169,13 +173,20 @@ int main(int argc, char *argv[]) {
   std::vector<unsigned int, aligned_allocator<unsigned int>>
       src_d_hbm[NUM_KERNEL];
   for (int i = 0; i < NUM_KERNEL; i++) {
-    src_d_hbm[i].resize(num_values*2+INTS_IN_HBM_LINE); // FIXME
-    // for (int j = 0; j < dataSize; j++) {
-    //   src_d_hbm[i][j] = j % 16;
-    // }
+    // one extra line for status
+    src_d_hbm[i].resize((&in_column)->m_num_lines[i] * INTS_IN_HBM_LINE * 2 + INTS_IN_HBM_LINE);
   }
 
   datamover_write(src_d_hbm, &in_column);
+
+  // FIXME: update the m_hbm_offset of *out
+  for (int i = 0; i < NUM_KERNEL; i++){
+    out_column.m_hbm_offset[i] = in_column.m_base_hbm_offset + in_column.m_num_lines[i];
+  }
+
+
+
+
 
   std::vector<cl_mem_ext_ptr_t> d_hbm_ext(NUM_KERNEL);
   std::vector<cl::Buffer> buffer_d_hbm(NUM_KERNEL);
@@ -190,7 +201,8 @@ int main(int argc, char *argv[]) {
                        context,
                        CL_MEM_READ_WRITE | CL_MEM_EXT_PTR_XILINX |
                            CL_MEM_USE_HOST_PTR,
-                       sizeof(uint32_t) * (num_values*2+INTS_IN_HBM_LINE), &d_hbm_ext[i], &err)); // FIXME
+                       sizeof(uint32_t) * (src_d_hbm[i].size()), &d_hbm_ext[i], &err));
+    // cout << "size of k buffer " << i << "=" << src_d_hbm[i].size() << endl;
   }
 
   // Copy input data to Device Global Memory
@@ -201,7 +213,10 @@ int main(int argc, char *argv[]) {
   q.finish();
 
 
+  std::chrono::duration<double> kernel_time(0);
+  auto kernel_start = std::chrono::high_resolution_clock::now();
 
+  // run
   for (int i = 0; i < NUM_KERNEL; i++){
     // addr_t in_addr = in_column.m_hbm_offset[i];
     // addr_t status_addr = out_column.m_hbm_offset[i];
@@ -210,8 +225,9 @@ int main(int argc, char *argv[]) {
     
     addr_t in_addr = in_column.m_base_hbm_offset;
     // the first HBM line is reserved for status
-    addr_t out_addr = out_column.m_base_hbm_offset+1;
-    addr_t status_addr = out_column.m_base_hbm_offset;
+    // FIXME: disable the out_column.m_base_hbm_offset due to the `non-int div`
+    addr_t out_addr = out_column.m_hbm_offset[i] + 1; 
+    addr_t status_addr = out_column.m_hbm_offset[i];
     // FIXME: exact line number
     unsigned num_in_lines = in_column.m_num_lines[i];
 
@@ -222,42 +238,7 @@ int main(int argc, char *argv[]) {
     OCL_CHECK(err, err = krnls[i].setArg(4, num_in_lines));
     OCL_CHECK(err, err = krnls[i].setArg(5, lower));
     OCL_CHECK(err, err = krnls[i].setArg(6, upper));
-  }
-
-
-
-
-  int num_times = 16384;
-
-  std::chrono::duration<double> kernel_time(0);
-  auto kernel_start = std::chrono::high_resolution_clock::now();
-
-
-  for (int t = 0; t < num_times; t++){
-
-
-
-  // run
-  for (int i = 0; i < NUM_KERNEL; i++){
-    // addr_t in_addr = in_column.m_hbm_offset[i];
-    // addr_t status_addr = out_column.m_hbm_offset[i];
-    // // the first HBM line is reserved for status
-    // addr_t out_addr = out_column.m_hbm_offset[i]+1;
-    
-    // addr_t in_addr = in_column.m_base_hbm_offset;
-    // // the first HBM line is reserved for status
-    // addr_t out_addr = out_column.m_base_hbm_offset+1;
-    // addr_t status_addr = out_column.m_base_hbm_offset;
-    // // FIXME: exact line number
-    // unsigned num_in_lines = in_column.m_num_lines[i];
-
-    // OCL_CHECK(err, err = krnls[i].setArg(0, buffer_d_hbm[i]));
-    // OCL_CHECK(err, err = krnls[i].setArg(1, in_addr));
-    // OCL_CHECK(err, err = krnls[i].setArg(2, out_addr));
-    // OCL_CHECK(err, err = krnls[i].setArg(3, status_addr));
-    // OCL_CHECK(err, err = krnls[i].setArg(4, num_in_lines));
-    // OCL_CHECK(err, err = krnls[i].setArg(5, lower));
-    // OCL_CHECK(err, err = krnls[i].setArg(6, upper));
+    OCL_CHECK(err, err = krnls[i].setArg(7, num_times));
     // Invoking the kernel
     OCL_CHECK(err, err = q.enqueueTask(krnls[i]));
 
@@ -266,9 +247,6 @@ int main(int argc, char *argv[]) {
   }
 
   q.finish();
-  }
-
-
 
   auto kernel_end = std::chrono::high_resolution_clock::now();
 
@@ -290,6 +268,10 @@ int main(int argc, char *argv[]) {
 
   cout << "Finish" << endl;
 
+
+
+
+
   // Copy Result from Device Global Memory to Host Local Memory
   for (int i = 0; i < NUM_KERNEL; i++) {
     OCL_CHECK(err, err = q.enqueueMigrateMemObjects(
@@ -304,8 +286,6 @@ int main(int argc, char *argv[]) {
 
   cout << "out_column.get_num_items(): " << out_column.get_num_items() << endl;
   out_column.sort_items();
-
-
 
 
   hbm_column<uint32_t> sw_out_column(num_values, 0);

@@ -123,7 +123,8 @@ void krnl_udf_selection(hbm_t *p_hbm,
                         const addr_t status_addr, 
                         const unsigned num_in_lines, 
                         const int lower,
-                        const int upper) {
+                        const int upper,
+                        const unsigned num_times) {
 
 #pragma HLS INTERFACE m_axi port = p_hbm offset = slave bundle = gmem0
 
@@ -134,7 +135,12 @@ void krnl_udf_selection(hbm_t *p_hbm,
 #pragma HLS INTERFACE s_axilite port = num_in_lines
 #pragma HLS INTERFACE s_axilite port = lower
 #pragma HLS INTERFACE s_axilite port = upper
+#pragma HLS INTERFACE s_axilite port = num_times  
 #pragma HLS INTERFACE s_axilite port = return
+
+
+COUNT_LOOP:
+for (int count = 0; count < num_times; count++) {
 
   unsigned positives = 0;
   unsigned num_out_lines = 0;
@@ -194,5 +200,6 @@ void krnl_udf_selection(hbm_t *p_hbm,
   status_line(63, 32) = num_out_lines;
 
   select_write_hbm_line(p_hbm, status_addr, status_line);
+}
 }
 }

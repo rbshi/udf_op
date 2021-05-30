@@ -34,7 +34,8 @@ void krnl_udf_selection(hbm_t *p_hbm, //read-only hbm (can save datapath?)
                         const addr_t status_addr, 
                         const unsigned num_in_lines, 
                         const int lower,
-                        const int upper);
+                        const int upper,
+                        const unsigned num_times);
 }
 
 #endif

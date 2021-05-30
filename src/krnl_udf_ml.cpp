@@ -33,7 +33,9 @@ void read_model(
 // FIXME: unroll consumes tooo many resource on linepart2float
 // #pragma HLS UNROLL
             float temp_model = linepart2float(temp, p);
+
             model[p][i] = (ap_int<MODEL_BITS>)(temp_model*FIXED_SCALE);
+#pragma HLS RESOURCE variable=model[p][i] core=FMul_maxdsp            
         }
     }
 }
@@ -112,7 +114,9 @@ void dot(
             cout << "in: " << in << endl;
             cout << "model_float: " << model_float << endl;
 #endif
+
             float temp = in*model_float;
+#pragma HLS RESOURCE variable=temp core=FMul_maxdsp            
             ap_int<MODEL_BITS> temp_fixed = (ap_int<MODEL_BITS>)temp;
             dot_partial_result_fixed[p] = temp_fixed;
         }
@@ -150,10 +154,14 @@ void scalar_engine(
         if (do_logreg) {
             dot_float = dot_float/FIXED_SCALE;
             dot_float = 1.0/(1.0 + exp(-dot_float));
+#pragma HLS RESOURCE variable=dot_float core=FMul_maxdsp
             dot_float = dot_float*FIXED_SCALE;
         }
+
         float label_scaled = labels[i]*FIXED_SCALE;
+#pragma HLS RESOURCE variable=label_scaled core=FMul_maxdsp        
         gradient = dot_float - label_scaled;
+#pragma HLS RESOURCE variable=gradient core=FMul_maxdsp
         gradient = step_size*gradient;
 #ifdef DEBUG
         cout << "--------------------------------------------" << endl;
@@ -197,7 +205,9 @@ void update(
         for (unsigned p = 0; p < PARALLELISM; p++) {
 #pragma HLS UNROLL
             float in = linepart2float(temp, p);
+
             float step = gradient*in;
+#pragma HLS RESOURCE variable=step core=FMul_maxdsp            
             ap_int<MODEL_BITS> step_fixed = (ap_int<MODEL_BITS>)step;
             ap_int<MODEL_BITS> model_fixed = model[p][dimension];
 #ifdef DEBUG
@@ -342,6 +352,7 @@ void sgd_update(
                 float model_float = (float)model_stream[p][dot_dimension];
 
                 float temp = in*model_float;
+#pragma HLS RESOURCE variable=temp core=FMul_maxdsp                
                 ap_int<MODEL_BITS> temp_fixed = (ap_int<MODEL_BITS>)temp;
                 dot_partial_result_fixed[p] = temp_fixed;
             }
@@ -361,10 +372,14 @@ void sgd_update(
                 if (do_logreg) {
                     dot_float = dot_float/FIXED_SCALE;
                     dot_float = 1.0/(1.0 + exp(-dot_float));
+#pragma HLS RESOURCE variable=dot_float core=FMul_maxdsp
                     dot_float = dot_float*FIXED_SCALE;
                 }
+        
                 float label_scaled = labels[dot_sample_index]*FIXED_SCALE;
+#pragma HLS RESOURCE variable=label_scaled core=FMul_maxdsp                        
                 gradient = dot_float - label_scaled;
+#pragma HLS RESOURCE variable=gradient core=FMul_maxdsp
                 gradient = step_size*gradient;
                 dot_dimension = 0;
                 dot_sample_index++;
@@ -382,7 +397,9 @@ void sgd_update(
             for (unsigned p = 0; p < PARALLELISM; p++) {
 #pragma HLS UNROLL
                 float in = linepart2float(in_for_update, p);
+
                 float step = gradient*in;
+#pragma HLS RESOURCE variable=step core=FMul_maxdsp                
                 ap_int<MODEL_BITS> step_fixed = (ap_int<MODEL_BITS>)step;
                 ap_int<MODEL_BITS> model_fixed = model[p][update_dimension];
                 ap_int<MODEL_BITS> temp = model_fixed - step_fixed;

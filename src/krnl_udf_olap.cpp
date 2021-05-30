@@ -323,7 +323,8 @@ void krnl_udf_olap(hbm_t *p_hbm_in, hbm_t *p_hbm_out, const addr_t status_addr,
                    const addr_t out_l_addr, const addr_t out_r_addr,
                    unsigned max_out_lines, const addr_t out_repeat_addr,
                    unsigned r_index_offset, bool build_r,
-                   bool handle_collisions) {
+                   bool handle_collisions,
+                   const unsigned num_times) {
 
 #pragma HLS INTERFACE m_axi port = p_hbm_in offset = slave bundle = gmem0
 #pragma HLS INTERFACE m_axi port = p_hbm_out offset = slave bundle = gmem1
@@ -342,6 +343,7 @@ void krnl_udf_olap(hbm_t *p_hbm_in, hbm_t *p_hbm_out, const addr_t status_addr,
 #pragma HLS INTERFACE s_axilite port = r_index_offset
 #pragma HLS INTERFACE s_axilite port = build_r
 #pragma HLS INTERFACE s_axilite port = handle_collisions
+#pragma HLS INTERFACE s_axilite port = num_times
 
 #pragma HLS INTERFACE s_axilite port = return
 
@@ -402,6 +404,10 @@ void krnl_udf_olap(hbm_t *p_hbm_in, hbm_t *p_hbm_out, const addr_t status_addr,
                r_num_lines, hash_mask);
   }
 
+
+COUNT_LOOP:
+for (int count = 0; count < num_times; count++) {
+
 #ifdef DEBUG
   cout << "--- storage: " << endl;
   for (unsigned i = 0; i < match_counts[0]; i++) {
@@ -414,6 +420,7 @@ void krnl_udf_olap(hbm_t *p_hbm_in, hbm_t *p_hbm_out, const addr_t status_addr,
     match_counts[p] = 0;
     repeat_counts[p] = 0;
   }
+
 
 #ifdef DEBUG
   cout << "--- join_probe ---" << endl;
@@ -441,3 +448,5 @@ void krnl_udf_olap(hbm_t *p_hbm_in, hbm_t *p_hbm_out, const addr_t status_addr,
 
   write_hbm_line(p_hbm_out, status_addr, status_line);
 }
+}
+
