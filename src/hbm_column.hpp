@@ -37,17 +37,17 @@ public:
   vector<uint32_t> m_num_lines;
   vector<uint32_t> m_offset;
 
-  hbm_column(uint32_t capacity_items, uint64_t hbm_offset) {
+  hbm_column(uint32_t num_kernel, uint32_t capacity_items, uint64_t hbm_offset) {
     m_base_hbm_offset = hbm_offset;
     m_num_items = 0;
     m_base = NULL;
     m_stride_wise = false;
     m_for_join = false;
     column_realloc(capacity_items);
-    set_partitions(NUM_KERNEL);
+    set_partitions(num_kernel);
   }
 
-  hbm_column(uint32_t capacity_items, uint64_t hbm_offset, bool stride_wise,
+  hbm_column(uint32_t num_kernel, uint32_t capacity_items, uint64_t hbm_offset, bool stride_wise,
              uint64_t len_stride) {
     m_base_hbm_offset = hbm_offset;
     m_num_items = 0;
@@ -56,10 +56,10 @@ public:
     len_stride = len_stride;
     m_for_join = false;
     column_realloc(capacity_items);
-    set_partitions(NUM_KERNEL);
+    set_partitions(num_kernel);
   }
 
-  hbm_column(uint32_t capacity_items, uint64_t hbm_offset, bool stride_wise,
+  hbm_column(uint32_t num_kernel, uint32_t capacity_items, uint64_t hbm_offset, bool stride_wise,
              uint64_t len_stride, bool for_join) {
     m_base_hbm_offset = hbm_offset;
     m_num_items = 0;
@@ -68,7 +68,7 @@ public:
     len_stride = len_stride;
     m_for_join = for_join;
     column_realloc(capacity_items);
-    set_partitions(NUM_KERNEL);
+    set_partitions(num_kernel);
   }
 
   ~hbm_column() { free(m_base); }

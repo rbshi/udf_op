@@ -51,10 +51,10 @@ function(binary_container_build TARGET)
     set(BUILD_DIR ${CMAKE_BINARY_DIR}/build_dir.${TARGET}.${DSA_NAME})
 
     if(DEFINED KERNEL_CFG_FILE)
-        set(VPP_LDFLAGS_KERNEL --config ${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL_CFG_FILE})
+        set(VPP_LDFLAGS_KERNEL --config ${CMAKE_CURRENT_SOURCE_DIR}/cfg/${KERNEL_CFG_FILE})
     # check if kernel config file (.cfg) exist
-    elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL_NAME}.cfg)
-        set(VPP_LDFLAGS_KERNEL --config ${CMAKE_CURRENT_SOURCE_DIR}/${KERNEL_NAME}.cfg)
+    elseif (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cfg/${KERNEL_NAME}.cfg)
+        set(VPP_LDFLAGS_KERNEL --config ${CMAKE_CURRENT_SOURCE_DIR}/cfg/${KERNEL_NAME}.cfg)
     endif()
 
     add_custom_command(
