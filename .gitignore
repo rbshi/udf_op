@@ -1,3 +1,5 @@
 build/
+*/.idea
+~*
 sftp-config*.json
 *.sublime*
