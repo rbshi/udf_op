@@ -1,0 +1,9 @@
+index,num_kernel,hbm_grouping,auto_alloc,slr_dense,server,status,freq_hbm,freq_kernel
+1,4,1,0,,debian,2,,
+2,8,1,0,,debian,2,,
+3,12,1,0,,debian,2,,
+4,16,1,0,,debian,2,,
+5,4,1,1,0.6,gcp,1,,
+6,8,1,1,0.6,gcp,1,,
+7,12,1,1,0.6,gcp,1,,
+8,16,1,1,0.8,gcp,1,,
