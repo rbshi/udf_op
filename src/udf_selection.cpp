@@ -202,6 +202,7 @@ int main(int argc, char *argv[]) {
   }
   q.finish();
 
+  std::cout << "Memory load finished\n";
 
   std::chrono::duration<double> kernel_time(0);
   auto kernel_start = std::chrono::high_resolution_clock::now();
@@ -233,7 +234,12 @@ int main(int argc, char *argv[]) {
     OCL_CHECK(err, err = q.enqueueTask(krnls[i]));
   }
 
+
+  std::cout << "Task load finished\n";
+
   q.finish();
+
+  std::cout << "Task finished\n";  
 
   auto kernel_end = std::chrono::high_resolution_clock::now();
 

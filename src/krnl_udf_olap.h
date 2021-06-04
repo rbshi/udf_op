@@ -42,4 +42,4 @@ void krnl_udf_olap(
     const addr_t out_l_addr, const addr_t out_r_addr, unsigned max_out_lines,
     const addr_t out_repeat_addr,
     unsigned r_index_offset,
-    bool build_r, bool handle_collisions, const unsigned num_times);
+    bool build_r, bool handle_collisions);
