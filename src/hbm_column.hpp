@@ -48,24 +48,24 @@ public:
   }
 
   hbm_column(uint32_t num_kernel, uint32_t capacity_items, uint64_t hbm_offset, bool stride_wise,
-             uint64_t len_stride) {
+             uint32_t len_stride) {
     m_base_hbm_offset = hbm_offset;
     m_num_items = 0;
     m_base = NULL;
     m_stride_wise = stride_wise;
-    len_stride = len_stride;
+    this->len_stride = len_stride;
     m_for_join = false;
     column_realloc(capacity_items);
     set_partitions(num_kernel);
   }
 
   hbm_column(uint32_t num_kernel, uint32_t capacity_items, uint64_t hbm_offset, bool stride_wise,
-             uint64_t len_stride, bool for_join) {
+             uint32_t len_stride, bool for_join) {
     m_base_hbm_offset = hbm_offset;
     m_num_items = 0;
     m_base = NULL;
     m_stride_wise = stride_wise;
-    len_stride = len_stride;
+    this->len_stride = len_stride;
     m_for_join = for_join;
     column_realloc(capacity_items);
     set_partitions(num_kernel);
@@ -86,7 +86,7 @@ public:
         if (m_for_join) {
           m_hbm_offset[i] = m_base_hbm_offset + 2 * i * len_stride;
         } else {
-          m_hbm_offset[i] = m_base_hbm_offset + i * len_stride;
+          m_hbm_offset[i] = m_base_hbm_offset + i * len_stride;     
         }
       } else {
         m_hbm_offset[i] = m_base_hbm_offset + assigned_num_lines;
@@ -98,15 +98,6 @@ public:
       } else {
         m_num_lines[i] = m_total_num_lines / m_num_partitions;
       }
-      // for 256-bit
-      // m_num_lines[i] += (m_num_lines[i]%2 == 0) ? 0 : 1;
-      // #ifdef HBM_COLUMN_VERBOSE
-      //             if (m_num_partitions > 1) {
-      //                 cout << "hbm_column, set_partitions: 0x" << hex <<
-      //                 m_hbm_offset[i] << dec << ", m_num_lines[" << i << "]:
-      //                 " << m_num_lines[i] << endl;
-      //             }
-      // #endif
       assigned_num_lines += m_num_lines[i];
     }
   }

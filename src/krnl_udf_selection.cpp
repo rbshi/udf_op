@@ -1,4 +1,3 @@
-
 #include "krnl_udf_selection.h"
 
 inline void select_write_hbm_line(hbm_t *p_hbm, addr_t hbm_addr,
@@ -13,6 +12,8 @@ void select_read_hbm_to_stream(hls::stream<ap_uint<BITS_IN_LINE>> &out_stream,
   unsigned k = 0;
   while (k < size_in_lines) {
 #pragma HLS PIPELINE II = 1
+
+
     temp(BITS_IN_LINE - 1, 0) = p_hbm[hbm_addr + k];
     out_stream.write(temp);
     k++;
@@ -76,6 +77,7 @@ void select_pipeline(hbm_t *p_hbm, addr_t input_addr,
                      unsigned &positives, int lower, int upper) {
 #pragma HLS DATAFLOW
   hls::stream<ap_uint<BITS_IN_LINE>> in_stream("in_stream");
+
   select_read_hbm_to_stream(in_stream, p_hbm, input_addr, num_to_process_lines);
   select_core(in_stream, indexes, fill_state, offset, num_to_process_lines,
               positives, lower, upper);
@@ -157,8 +159,6 @@ for (int count = 0; count < num_times; count++) {
 
   unsigned num_iterations = CEILING(num_in_lines, LOG2_BUFFER_SIZE);
 
-  // cout << "select_main, num_iterations: " << num_iterations << endl;
-
   unsigned offset = 0;
   unsigned num_processed_lines = 0;
   for (unsigned i = 0; i < num_iterations; i++) {
@@ -168,19 +168,15 @@ for (int count = 0; count < num_times; count++) {
       num_to_process_lines = num_in_lines - num_processed_lines;
     }
 
-    // cout << "select_main, num_to_process_lines: " << num_to_process_lines <<
-    // endl;
-
     for (unsigned p = 0; p < PARALLELISM; p++) {
 #pragma HLS UNROLL
       fill_state[p] = 0;
     }
 
+
     select_pipeline(p_hbm, input_addr + num_processed_lines,
                     num_to_process_lines, indexes, fill_state, offset,
                     positives, lower, upper);
-
-    // cout << "positives: " << positives << endl;
 
     for (unsigned p = 0; p < PARALLELISM; p++) {
       if (fill_state[p] > max_fill_state) {
@@ -190,6 +186,7 @@ for (int count = 0; count < num_times; count++) {
 
     write_pipeline(p_hbm, output_addr + num_out_lines, indexes, fill_state,
                    max_fill_state);
+
 
     num_out_lines += max_fill_state;
     num_processed_lines += num_to_process_lines;
