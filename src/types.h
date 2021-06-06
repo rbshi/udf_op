@@ -1,6 +1,8 @@
 #ifndef TYPES_HH
 #define TYPES_HH
 
+#define AP_INT_MAX_W 2048
+
 #include <ap_int.h>
 
 typedef ap_uint<253> resp_combo_t; //tlrflit (252:215) + tlxscflit_t (214:0)

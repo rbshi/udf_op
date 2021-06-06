@@ -1,3 +1,5 @@
+#define AP_INT_MAX_W 2048
+
 #include <hls_stream.h>
 #include <ap_int.h>
 #include "types.h"

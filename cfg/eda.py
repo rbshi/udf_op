@@ -39,8 +39,16 @@ def kernel_alloc(kernel_name, num_kernel, slr_dense, hmss_path_per_kernel=1):
     n_slr = np.array([num_kernel, 0, 0])
     slr_resource_meet = [False, False, False]
 
+    # relax the slr_dense of SLR1/2 to N times of SLR0
+    slr_dense_factor = 1.6
+
     # scheme: move a kernel to the next slr, if resource is NOT meet
     for i_slr in range(3):
+        if i_slr > 0:
+            slr_dense_multi = slr_dense * slr_dense_factor
+        else:
+            slr_dense_multi = slr_dense
+
         while ~slr_resource_meet[i_slr]:
             hmss_path_clb = np.transpose(np.dot(hmss_path_unit_resource, n_slr * hmss_path_per_kernel))
             hmss_path_all = hmss_path_clb + hmss_path_switch
@@ -49,8 +57,8 @@ def kernel_alloc(kernel_name, num_kernel, slr_dense, hmss_path_per_kernel=1):
             static_per_slr = np.array([31093, 42921, 0, 0, 0])
             resource_all = dynamic_all + np.tile(static_per_slr, [3,1])
 
-            slr_resource_meet[i_slr] = (resource_all[i_slr, 0] < slr_resource[i_slr, 0] * slr_dense) & \
-                                       (resource_all[i_slr, 1] < slr_resource[i_slr, 1] * slr_dense) & \
+            slr_resource_meet[i_slr] = (resource_all[i_slr, 0] < slr_resource[i_slr, 0] * slr_dense_multi) & \
+                                       (resource_all[i_slr, 1] < slr_resource[i_slr, 1] * slr_dense_multi) & \
                                        (resource_all[i_slr, 2] <= slr_resource[i_slr, 2]) & \
                                        (resource_all[i_slr, 3] <= slr_resource[i_slr, 3]) & \
                                        (resource_all[i_slr, 4] <= slr_resource[i_slr, 4])

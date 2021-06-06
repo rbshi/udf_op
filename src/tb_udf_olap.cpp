@@ -3,8 +3,7 @@
 #include <algorithm>
 
 #define AP_INT_MAX_W 2048
-
-
+#define HBM_PARTITION
 
 // #define DEBUG
 // #define VERBOSE
@@ -75,31 +74,25 @@ void datamover_write(hbm_t *hbm_memory, hbm_column<int> *in) {
   }
 }
 
-void datamover_read(hbm_t *hbm_memory, hbm_column<uint32_t> *out,
-                    unsigned num_in_lines) {
-  // out->column_realloc(num_lines*INTS_IN_LINE);
-  cout << "out->m_total_num_lines: " << out->m_total_num_lines << endl;
-  for (uint32_t p = 0; p < out->m_num_partitions; p++) {
+void datamover_read(hbm_t *hbm_memory, unsigned num_in_lines, hbm_column<uint32_t> *out) {
     // obtain the num_lines, num_possitivies is ignored
-    uint32_t num_lines = (uint32_t)hbm_memory[out->m_hbm_offset[p]](63, 32);
-    for (uint32_t i = 0; i < num_lines; i++) {
+    for (uint32_t i = 0; i < num_in_lines; i++) {
       for (uint32_t j = 0; j < WORDS_IN_HBM_LINE; j++) {
         // NOTE: +1 due to the status address
-        uint32_t temp = (uint32_t)hbm_memory[out->m_hbm_offset[p] + 1 + i](
+        uint32_t temp = (uint32_t)hbm_memory[out->m_hbm_offset[0] + i](
             BITS_IN_WORD * (j + 1) - 1, BITS_IN_WORD * j);
-        if (temp != 0xFFFFFFFF)
+        if (temp != 0xFFFFFFFF) {
           // FIXME: offset of index, use [0] because it contains the avg value
-          out->append(temp + WORDS_IN_HBM_LINE * num_in_lines * p);
+          out->append(temp);
+          // cout << "out->m_num_items=" << out.get_num_items() << 'with temp=' << temp << endl;
+        }
       }
     }
   }
-}
-
-
-
 
 int main(int argc, char *argv[]) {
 
+	unsigned num_kernel = 1;
 	unsigned l_count = 1024;
 	char* l_config;
 	unsigned r_count = 2048;
@@ -129,23 +122,19 @@ int main(int argc, char *argv[]) {
 	srand(3);
 
 	// Input
-	hbm_column<int> in_r(r_count, 10);
-	hbm_column<int> in_l(l_count, in_r.m_base_hbm_offset + in_r.m_total_num_lines);
+	hbm_column<int> in_r(num_kernel, r_count, 10);
+	hbm_column<int> in_l(num_kernel, l_count, in_r.m_base_hbm_offset + in_r.m_total_num_lines);
 	in_r.populate_int_column(r_count, r_config[0], r_config[1], 0xDEADBEEF);
 	in_l.populate_int_column(l_count, l_config[0], l_config[1], 0xBEEFDEAD);
 
 	// Output
 	unsigned max_items = 2*l_count;
-	hbm_column<uint32_t> r1(max_items, in_l.m_base_hbm_offset + in_l.m_total_num_lines);
-	hbm_column<uint32_t> r2(max_items, r1.m_base_hbm_offset + r1.m_total_num_lines);
-	hbm_column<tuple_t> repeat(max_items, r2.m_base_hbm_offset + r2.m_total_num_lines);
+	hbm_column<uint32_t> r1(num_kernel, max_items, in_l.m_base_hbm_offset + in_l.m_total_num_lines);
+	hbm_column<uint32_t> r2(num_kernel, max_items, r1.m_base_hbm_offset + r1.m_total_num_lines);
+	hbm_column<tuple_t> repeat(num_kernel, max_items, r2.m_base_hbm_offset + r2.m_total_num_lines);
 
 	// Transfer data to HBM
 	hbm_t hbm_memory[HBM_SIZE];
-	hbm_gmem_t hbm_gmem;
-	hbm_gmem.p1 = hbm_memory;
-	hbm_gmem.p2 = hbm_memory;
-	hbm_gmem.strided_hbm_offset = HBM_SIZE/2;
 
 	addr_t status_addr = 3;
 	addr_t l_addr = in_l.m_base_hbm_offset;
@@ -185,8 +174,8 @@ int main(int argc, char *argv[]) {
 
 		cout << "--------> r_num_lines_to_process: " << r_num_lines_to_process << endl;
 
-		join_main(
-			hbm_gmem.p1, hbm_gmem.p2, hbm_gmem.p1, hbm_gmem.p2, hbm_gmem.strided_hbm_offset,
+		krnl_udf_olap(
+			hbm_memory, hbm_memory,
 			status_addr,
 			l_addr, l_num_lines,
 			r_addr + r_num_lines_processed, r_num_lines_to_process,
@@ -197,10 +186,10 @@ int main(int argc, char *argv[]) {
 
 		r_num_lines_processed += r_num_lines_to_process;
 
-		num_matches += hbm_gmem.p1[status_addr](31,0);
-		count_out_lines += hbm_gmem.p1[status_addr](63,32);
-		num_repeats += hbm_gmem.p1[status_addr](95,64);
-		count_repeat_lines += hbm_gmem.p1[status_addr](127,96);
+		num_matches += hbm_memory[status_addr](31,0);
+		count_out_lines += hbm_memory[status_addr](63,32);
+		num_repeats += hbm_memory[status_addr](95,64);
+		count_repeat_lines += hbm_memory[status_addr](127,96);
 		cout << "--------> hash iteratios: " << i << endl;
 		cout << "num_matches: " << num_matches << endl;
 		cout << "count_out_lines: " << count_out_lines << endl;
@@ -210,13 +199,13 @@ int main(int argc, char *argv[]) {
 
 	// Verification
 	if (do_verify == 1) {
-		datamover_read(hbm_gmem, count_out_lines, &r1);
-		datamover_read(hbm_gmem, count_out_lines, &r2);
+		datamover_read(hbm_memory, count_out_lines, &r1);
+		datamover_read(hbm_memory, count_out_lines, &r2);
 		cout << "r1.get_num_items() : " << r1.get_num_items() << endl;
 		cout << "r2.get_num_items() : " << r2.get_num_items() << endl;
 
-		hbm_column<uint32_t> sw_r1(num_matches, 0);
-		hbm_column<uint32_t> sw_r2(num_matches, 0);
+		hbm_column<uint32_t> sw_r1(num_kernel, num_matches, 0);
+		hbm_column<uint32_t> sw_r2(num_kernel, num_matches, 0);
 		sw_join_main(&sw_r1, &sw_r2, &in_l, &in_r);
 		
 		printf("sw_join num_matches: %d\n", sw_r1.get_num_items());

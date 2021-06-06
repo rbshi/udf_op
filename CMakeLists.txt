@@ -20,15 +20,16 @@ set(OCL_COMMON_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/common/includes/xcl2)
 
 
 #FIXME: should VIVADO_INCLUDE be added in to FindVitis?
-set(CXXFLAGS -I${Vitis_INCLUDE_DIRS} -I{OCL_COMMON_INCLUDE})
-set(LDFLAGS -L${Vitis_LIBRARIES} -lOpenCL -pthread)
+set(CXXFLAGS -g -std=c++14 -I${Vitis_INCLUDE_DIRS} -I{OCL_COMMON_INCLUDE} -I${XRT_ROOT}/include -I${VITIS_ROOT}/../../Vivado/${Vitis_VERSION}/include)
+set(LDFLAGS -L${Vitis_LIBRARIES} -lOpenCL -pthread -L${XRT_ROOT}/lib)
 set(HOST_SRC ${OCL_COMMON_SRC} ${CMAKE_CURRENT_SOURCE_DIR}/src/${HOST_NAME}.cpp)
 set(KERNEL_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/${KERNEL_NAME}.cpp)
 
-include_directories(${Vitis_INCLUDE_DIRS} ${OCL_COMMON_INCLUDE})
+include_directories(${Vitis_INCLUDE_DIRS} ${OCL_COMMON_INCLUDE}})
+link_directories(${XRT_ROOT}/lib/)
 # Host
 add_executable(${HOST_NAME} ${HOST_SRC})
-target_link_libraries(${HOST_NAME} ${Vitis_LIBRARIES} pthread)
+target_link_libraries(${HOST_NAME} ${Vitis_LIBRARIES} pthread xrt_coreutil)
 
 
 #FIXME: only support one kernel now
