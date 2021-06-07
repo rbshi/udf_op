@@ -1,7 +1,7 @@
 #ifndef TYPES_HH
 #define TYPES_HH
 
-#define AP_INT_MAX_W 2048
+// #define AP_INT_MAX_W 2048
 
 #include <ap_int.h>
 

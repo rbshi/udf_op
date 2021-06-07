@@ -40,4 +40,19 @@ const ap_uint<MODEL_BITS> FIXED_SCALE = ((ap_uint<64>)1 << LOG2_FIXED_SCALE);
 #define LOG2_INT64_IN_HBM_LINE  (LOG2_BYTES_IN_HBM_LINE - LOG2_BYTES_IN_INT64)
 #define INT64_IN_HBM_LINE       (1 << LOG2_INT64_IN_HBM_LINE)
 
+
+void krnl_udf_ml(
+    hbm_t* p_hbm,
+    addr_t samples_addr,
+    addr_t labels_addr,
+    addr_t model_addr,
+    float step_size,
+    float lambda,
+    bool do_logreg,
+    unsigned minibatch_size,
+    unsigned num_epochs,
+    unsigned num_features_in_lines,
+    unsigned num_samples);
+
+
 #endif

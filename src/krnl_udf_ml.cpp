@@ -442,7 +442,7 @@ void sgd_pipeline2(
 {
 #pragma HLS DATAFLOW
 
-    ml_read_hbm_to_stream2(in_stream, p_hbm, samples_addr, num_features_in_lines*partition_size);
+    ml_read_hbm_to_stream(in_stream, p_hbm, samples_addr, num_features_in_lines*partition_size);
 
     ml_duplicate_stream(in_stream_for_dot, in_stream_for_update, in_stream, num_features_in_lines*partition_size);
 
