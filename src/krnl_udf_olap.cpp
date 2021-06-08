@@ -219,9 +219,9 @@ void join_probe(
     ap_uint<LOG2_HASH_TABLE_SIZE> bucket[PROBE_PARALLELISM][HASH_TABLE_SIZE],
     ap_uint<BITS_IN_WORD> storage[PROBE_PARALLELISM][HASH_TABLE_SIZE],
     unsigned match_counts[PROBE_PARALLELISM],
-    unsigned repeat_counts[PROBE_PARALLELISM], size_t l_addr,
-    unsigned r_index_offset, unsigned num_lines, size_t out_l_addr,
-    size_t out_r_addr, unsigned max_out_lines, size_t out_repeat_addr,
+    unsigned repeat_counts[PROBE_PARALLELISM], addr_t l_addr,
+    unsigned r_index_offset, unsigned num_lines, addr_t out_l_addr,
+    addr_t out_r_addr, unsigned max_out_lines, addr_t out_repeat_addr,
     bool handle_collisions, unsigned hash_mask) {
 #pragma HLS DATAFLOW
 
@@ -325,8 +325,8 @@ void krnl_udf_olap(hbm_t *p_hbm_in, hbm_t *p_hbm_out, const addr_t status_addr,
                    unsigned r_index_offset, bool build_r,
                    bool handle_collisions) {
 
-#pragma HLS INTERFACE m_axi port = p_hbm_in offset = slave bundle = gmem0
-#pragma HLS INTERFACE m_axi port = p_hbm_out offset = slave bundle = gmem1
+#pragma HLS INTERFACE m_axi depth=4096 port = p_hbm_in offset = slave bundle = gmem0
+#pragma HLS INTERFACE m_axi depth=4096 port = p_hbm_out offset = slave bundle = gmem1
 
 #pragma HLS INTERFACE s_axilite port = p_hbm_in
 #pragma HLS INTERFACE s_axilite port = p_hbm_out

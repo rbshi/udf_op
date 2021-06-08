@@ -84,7 +84,7 @@ void datamover_read(hbm_t *hbm_memory, unsigned num_in_lines, hbm_column<uint32_
         if (temp != 0xFFFFFFFF) {
           // FIXME: offset of index, use [0] because it contains the avg value
           out->append(temp);
-          // cout << "out->m_num_items=" << out.get_num_items() << 'with temp=' << temp << endl;
+          cout << "out->m_num_items=" << out.get_num_items() << 'with temp=' << temp << endl;
         }
       }
     }
