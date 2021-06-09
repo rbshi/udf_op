@@ -15,7 +15,7 @@ index,num_kernel,hbm_grouping,auto_alloc,slr_dense,server,status,freq_hbm,freq_k
 14,24,1,1,0.4,debian,2,429,237
 15,28,1,1,0.4,debian,2,375,178
 16,32,1,1,0.4,debian,2,280,189
-17,26,1,1,0.4,debian,1,,
-18,30,1,1,0.4,debian,1,,
-19,26,1,1,0.5,debian,1,,
-20,30,1,1,0.5,debian,1,,
+17,26,1,1,0.4,debian,1,363,213
+18,30,1,1,0.4,debian,1,309,195
+19,26,1,1,0.5,debian,1,366,177
+20,30,1,1,0.5,debian,1,281,144

@@ -28,7 +28,6 @@ using namespace std;
 void sw_join_main(hbm_column<uint32_t> *r1, hbm_column<uint32_t> *r2,
                   hbm_column<int> *in_l, hbm_column<int> *in_r) {
   uint32_t i, j;
-
   for (i = 0; i < in_l->get_num_items(); i++) {
     for (j = 0; j < in_r->get_num_items(); j++) {
       if (in_l->get_item(i) == in_r->get_item(j)) {
@@ -97,6 +96,7 @@ void datamover_read(std::vector<int*> hbm_buffer_ptr, unsigned num_in_lines, hbm
       }
     }
   }
+  // cout << "out->m_num_items=" << out->get_num_items() << endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -148,9 +148,6 @@ int main(int argc, char *argv[]) {
 
 
   int stride_partition_hbm_line = HBM_CHANNEL_SIZE / BYTES_IN_HBM_LINE * (32 / num_kernel);
-  // int stride_partition_hbm_line = HBM_CHANNEL_SIZE / BYTES_IN_HBM_LINE * 2;
-  cout << "stride_partition_hbm_line=" << stride_partition_hbm_line << endl;
-  cout << "stride_partition_hbm_line/2=" << stride_partition_hbm_line/2 << endl;
 
 	// Input, r is replicated in all kernels, DONOT partition
 	hbm_column<int> in_r(num_kernel, r_count, 10);
@@ -160,7 +157,7 @@ int main(int argc, char *argv[]) {
 	in_l.populate_int_column(l_count, l_config[0], l_config[1], 0xBEEFDEAD);
 
 	// Output
-	unsigned max_items = 2*l_count;
+	unsigned max_items = 3*l_count;
 
 	// hbm_column<uint32_t> r1(num_kernel, max_items, in_l.m_base_hbm_offset + in_l.m_total_num_lines);
 	// results base_offset will be 1/2 stride_partition (start from a new HBM channel)
@@ -178,54 +175,47 @@ int main(int argc, char *argv[]) {
 		hbm_buffer[i] = xrt::bo(device, hbm_size * 4, krnl_all.group_id(0));
 		auto hbm_channel_ptr = hbm_buffer[i].map<int*>();
 		hbm_buffer_ptr[i] = hbm_channel_ptr;
-		cout << "allocated one large buffer." << endl;
 	}
 
+	std::cout << "[INFO] HBM large buffer allocated." << endl;
 
+
+  std::chrono::duration<double> lcopy_time(0);
+  auto lcopy_start = std::chrono::high_resolution_clock::now();
+
+	// copy in_l, in_r to hbm_buffer
 	int* ptr_start_in_l = in_l.get_base();
 	for (int i = 0; i < num_kernel * 1; i++) {
 		// targe hbm_buffer idx
 		// in_r 
 		uint64_t hbm_buffer_idx = (in_r.m_base_hbm_offset + stride_partition_hbm_line * i) / uint64_t(hbm_size * 4 / BYTES_IN_HBM_LINE);
 		uint64_t hbm_buffer_offset = (in_r.m_base_hbm_offset + stride_partition_hbm_line * i) % uint64_t(hbm_size * 4 / BYTES_IN_HBM_LINE);
-
-		std::cout << "hbm_buffer_idx=" << hbm_buffer_idx << endl;
-		std::cout << "hbm_buffer_offset=" << hbm_buffer_offset << endl;		
-
 		std::copy_n(in_r.get_base(), in_r.m_total_num_lines * WORDS_IN_HBM_LINE, (hbm_buffer_ptr[hbm_buffer_idx] + hbm_buffer_offset * WORDS_IN_HBM_LINE));
 		hbm_buffer[hbm_buffer_idx].sync(XCL_BO_SYNC_BO_TO_DEVICE, in_r.m_total_num_lines * BYTES_IN_HBM_LINE, hbm_buffer_offset * BYTES_IN_HBM_LINE);
 		
-		std::cout << "Copy in_r finished\n";
-
 		// in_l
 		hbm_buffer_idx = in_l.m_hbm_offset[i] / uint64_t(hbm_size * 4 / BYTES_IN_HBM_LINE);
 		hbm_buffer_offset = in_l.m_hbm_offset[i] % uint64_t(hbm_size * 4 / BYTES_IN_HBM_LINE);
-
-		std::cout << "hbm_buffer_idx=" << hbm_buffer_idx << endl;
-		std::cout << "hbm_buffer_offset=" << hbm_buffer_offset << endl;		
-
 		std::copy_n(ptr_start_in_l, in_l.m_num_lines[i] * WORDS_IN_HBM_LINE, (hbm_buffer_ptr[hbm_buffer_idx] + hbm_buffer_offset * WORDS_IN_HBM_LINE));
 		hbm_buffer[hbm_buffer_idx].sync(XCL_BO_SYNC_BO_TO_DEVICE, in_l.m_num_lines[i] * BYTES_IN_HBM_LINE, hbm_buffer_offset * BYTES_IN_HBM_LINE);
 
 		ptr_start_in_l += in_l.m_num_lines[i] * WORDS_IN_HBM_LINE;
-
-		std::cout << "Copy in_l finished\n";
-
 	}
-  std::cout << "Memory load finished\n";
 
+  auto lcopy_end = std::chrono::high_resolution_clock::now();
+  lcopy_time = std::chrono::duration<double>(lcopy_end - lcopy_start);
+  cout << "[INFO] LCopy time:" << lcopy_time.count() << endl;
 
+  cout << "[INFO] Memory load finished\n";
 
 	// cout << "l_addr: " << l_addr << endl;
 	// cout << "l_num_lines: " << l_num_lines << endl;
 	// cout << "r_addr: " << r_addr << endl;
 	// cout << "r_num_lines: " << r_num_lines << endl;
 
-
-
 	const unsigned hash_table_size = HASH_TABLE_SIZE-WORDS_IN_LINE;
 	unsigned num_hash_iterations = r_count/hash_table_size + (r_count%hash_table_size > 0);
-	cout << "num_hash_iterations: " << num_hash_iterations << endl;
+	cout << "[INFO] num_hash_iterations: " << num_hash_iterations << endl;
 
 	unsigned r_num_lines_processed = 0;
 
@@ -256,10 +246,25 @@ int main(int argc, char *argv[]) {
 		max_out_lines[i] = r1.m_num_lines[i];
 	}
 
-	cout << "r1.m_hbm_offset=" << r1.m_hbm_offset[0] << endl;
-
   // run the kernel
   std::vector<xrt::run> runs(num_kernel);
+
+  // initialize the kernels
+  for (int i = 0; i < num_kernel; i++) {
+    std::string cu_id = std::to_string(i * (16 / num_kernel) + 1);
+    std::string krnl_name_full = cu_name + ":{" + cu_name + "_" + cu_id + "}";
+    auto krnl_inst = xrt::kernel(device, uuid, krnl_name_full, 0);  	
+    auto run = krnl_inst(
+				hbm_buffer[0], hbm_buffer[0], 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    runs[i] = run;
+    run.wait();
+  }
+
+  cout << "[INFO] Kernels initialized." << endl;
+
+
+  std::chrono::duration<double> kernel_time(0);
+  auto kernel_start = std::chrono::high_resolution_clock::now();
 
 	for (unsigned j = 0; j < num_hash_iterations; j++) {
 
@@ -270,36 +275,33 @@ int main(int argc, char *argv[]) {
 		else {
 			r_num_lines_to_process = hash_table_size/WORDS_IN_LINE;
 		}
-		cout << "[INFO] r_num_lines_to_process: " << r_num_lines_to_process << endl;
 
 
 		for (int i = 0; i < num_kernel; i++) {
-	    std::string cu_id = std::to_string(i + 1);
-	    std::string krnl_name_full = cu_name + ":{" + cu_name + "_" + cu_id + "}";
-	    auto krnl_inst = xrt::kernel(device, uuid, krnl_name_full, 0);
+			runs[i].set_arg(0, hbm_buffer[0]);
+			runs[i].set_arg(1, hbm_buffer[0]);
+			runs[i].set_arg(2, status_addr[i]);
+			runs[i].set_arg(3, l_addr[i]);
+			runs[i].set_arg(4, l_num_lines[i]);
+			runs[i].set_arg(5, r_addr[i] + r_num_lines_processed);
+			runs[i].set_arg(6, r_num_lines_to_process);
+			runs[i].set_arg(7, out_l_addr[i] + count_out_lines[i]);
+			runs[i].set_arg(8, out_r_addr[i] + count_out_lines[i]);
+			runs[i].set_arg(9, max_out_lines[i]);
+			runs[i].set_arg(10, out_repeat_addr[i] + count_repeat_lines[i]);
+			runs[i].set_arg(11, r_num_lines_processed * WORDS_IN_LINE);
+			runs[i].set_arg(12, build_r);
+			runs[i].set_arg(12, handle_collisions);
 
-	    cout << status_addr[i] << "\t" << l_addr[i] << "\t" << l_num_lines[i] << "\t" \
-	     << r_addr[i] + r_num_lines_processed << "\t" << r_num_lines_to_process << "\t" << out_l_addr[i] + count_out_lines[i] << "\t" << out_r_addr[i] + count_out_lines[i] \
-	     << "\t"  << max_out_lines[i] << "\t" << r_num_lines_processed * WORDS_IN_LINE << endl;
-
-	    auto run = krnl_inst(
-					hbm_buffer[0], hbm_buffer[0],
-					status_addr[i],
-					l_addr[i], l_num_lines[i],
-					r_addr[i] + r_num_lines_processed, r_num_lines_to_process,
-					out_l_addr[i] + count_out_lines[i], out_r_addr[i] + count_out_lines[i], max_out_lines[i],
-					out_repeat_addr[i] + count_repeat_lines[i],
-					r_num_lines_processed * WORDS_IN_LINE,
-					build_r, handle_collisions);
-	    runs[i] = run;
+			runs[i].start();
 		}
-
-		r_num_lines_processed += r_num_lines_to_process;
-
 
 	  for (auto &run : runs) {
 	    auto state = run.wait();
 	  }
+
+		r_num_lines_processed += r_num_lines_to_process;
+
 
 		// obtain the results of one iteration
 		for (int i = 0; i < num_kernel; i++) {
@@ -308,26 +310,18 @@ int main(int argc, char *argv[]) {
 			// std::copy_n(ptr_start_in_l, in_l.m_num_lines[i] * WORDS_IN_HBM_LINE, (hbm_buffer_ptr[hbm_buffer_idx] + hbm_buffer_offset * WORDS_IN_HBM_LINE));
 			hbm_buffer[hbm_buffer_idx].sync(XCL_BO_SYNC_BO_FROM_DEVICE, BYTES_IN_HBM_LINE, hbm_buffer_offset * BYTES_IN_HBM_LINE);
 
-			cout << "obtain status:" << hbm_buffer_idx << "\t" << hbm_buffer_offset << endl;
-
-			// for (j = 0; j < 256; j++){
-			// 	cout << hbm_buffer_ptr[hbm_buffer_idx][j] << "\t";
-			// }
-			// cout << endl;
-
 			num_matches[i] +=	hbm_buffer_ptr[hbm_buffer_idx][hbm_buffer_offset * WORDS_IN_HBM_LINE + 0];
 			count_out_lines[i] +=	hbm_buffer_ptr[hbm_buffer_idx][hbm_buffer_offset * WORDS_IN_HBM_LINE + 1];
 			num_repeats[i] +=	hbm_buffer_ptr[hbm_buffer_idx][hbm_buffer_offset * WORDS_IN_HBM_LINE + 2];
 			count_repeat_lines[i] += hbm_buffer_ptr[hbm_buffer_idx][hbm_buffer_offset * WORDS_IN_HBM_LINE + 3];
-
-			cout << "[INFO] Hash iteration: " << j << "\t kernel [" << i << "]: ====================";
-			cout << "num_matches: " << num_matches[i] << endl;
-			cout << "count_out_lines: " << count_out_lines[i] << endl;
-			cout << "num_repeats: " << num_repeats[i] << endl;
-			cout << "count_repeat_lines: " << count_repeat_lines[i] << endl;
 		}
-	
 	}
+
+  auto kernel_end = std::chrono::high_resolution_clock::now();
+  kernel_time = std::chrono::duration<double>(kernel_end - kernel_start);
+  cout << "[INFO] Kernel time:" << kernel_time.count() << endl;	
+
+
 
 
 	// copyback

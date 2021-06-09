@@ -7,7 +7,7 @@ index,num_kernel,hbm_grouping,auto_alloc,slr_dense,server,status,freq_hbm,freq_k
 6,8,1,1,0.6,gcp,2,450,257,
 7,12,1,1,0.6,gcp,2,373,232,
 8,16,1,1,0.8,debian,2,248,126,1
-9,12,1,1,0.6,debian,,,,
-10,14,1,1,0.6,debian,,,,
-11,16,1,1,0.6,debian,,,,
-12,2,1,0,,ethz,,,,
+9,12,1,1,0.6,ubuntuhk,,,,1 bugfix
+10,14,1,1,0.6,ubuntuhk,,,,1 bugfix
+11,16,1,1,0.6,ubuntuhk,,,,1 bugfix
+12,2,1,0,,ethz,,,,1 bugfix

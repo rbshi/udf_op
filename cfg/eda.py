@@ -40,7 +40,7 @@ def kernel_alloc(kernel_name, num_kernel, slr_dense, hmss_path_per_kernel=1):
     slr_resource_meet = [False, False, False]
 
     # relax the slr_dense of SLR1/2 to N times of SLR0
-    slr_dense_factor = 1.6
+    slr_dense_factor = 1.3
 
     # scheme: move a kernel to the next slr, if resource is NOT meet
     for i_slr in range(3):

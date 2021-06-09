@@ -22,7 +22,7 @@ def main():
             cfgfile = open(cfg_filename, 'w')
             cfgfile.write("[connectivity]\n")
             for idx_kernel in range(num_kernel):
-                cfgfile.write("sp=" + kernel_name + "_" + str(idx_kernel + 1) + ".p_hbm:HBM[0:31]\n")
+                cfgfile.write("sp=" + kernel_name + "_" + str(idx_kernel + 1) + ".p_hbm:HBM[" + str(2 * idx_kernel) + ":" + str(2 * idx_kernel + 1) + "]\n")
             cfgfile.write("nk=" + kernel_name + ":" + str(num_kernel) + "\n")
             if auto_alloc:
                 slr_dense = float(row[4])
