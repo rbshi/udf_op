@@ -105,12 +105,13 @@ int main(int argc, char *argv[]) {
   std::vector<xrt::bo> hbm_buffer(num_kernel);
   std::vector<int*> hbm_buffer_ptr(num_kernel);
   int hbm_size = (1<<28);
+  int hbm_buffer_size = hbm_size * 1;
 
 
 
   // each kernel uses one channel
-  for (int i = 0; i < num_kernel * 1; i++) {
-    hbm_buffer[i] = xrt::bo(device, hbm_size, 0, i);
+  for (int i = 0; i < num_kernel; i++) {
+    hbm_buffer[i] = xrt::bo(device, hbm_buffer_size, krnl_all.group_id(0));
     auto hbm_channel_ptr = hbm_buffer[i].map<int*>();
     hbm_buffer_ptr[i] = hbm_channel_ptr;
     // move data to hbm, NEED COPY FIRST..
@@ -126,8 +127,7 @@ int main(int argc, char *argv[]) {
 	uint64_t labels_addr = dataset_inst.m_labels_hbm_offset;
 	uint64_t model_addr = models_inst.m_x_hbm_offset;
 
-
-  // run the kernel
+  // run the kernel (initialization)
   std::vector<xrt::run> runs(num_kernel);
   for (int i = 0; i < num_kernel; i++){
     // obtain the krnl
@@ -149,10 +149,26 @@ int main(int argc, char *argv[]) {
     runs[i] = run;
   }
 
+  for (auto &run : runs) {
+    auto state = run.wait();
+  }
+
+  std::chrono::duration<double> kernel_time(0);
+  auto kernel_start = std::chrono::high_resolution_clock::now();
+
+  for (auto &run : runs) {
+  	run.start();
+  }
 
   for (auto &run : runs) {
     auto state = run.wait();
   }
+
+
+  auto kernel_end = std::chrono::high_resolution_clock::now();
+  kernel_time = std::chrono::duration<double>(kernel_end - kernel_start);
+  cout << "Kernel time: " << kernel_time.count() << endl;
+
 
 	// copy back
   for (int i = 0; i < num_kernel * 1; i++) {

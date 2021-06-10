@@ -11,4 +11,7 @@ index,num_kernel,hbm_grouping,auto_alloc,slr_dense,server,status,freq_hbm,freq_k
 10,18,1,1,0.75,ubuntuhk,2,267,107,1
 11,12,1,1,0.6,debian,1,,,
 12,14,1,1,0.6,debian,1,,,
-13,16,1,1,0.6,ethz,1,,,
+13,16,1,1,0.6,ethz,1,-,-,
+14,12,1,1,0.6,ubuntuhk,,,,
+15,14,1,1,0.6,ethz,,,,
+16,16,1,1,0.6,ubuntuhk,,,,

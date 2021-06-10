@@ -22,7 +22,9 @@ def main():
             cfgfile = open(cfg_filename, 'w')
             cfgfile.write("[connectivity]\n")
             for idx_kernel in range(num_kernel):
-                cfgfile.write("sp=" + kernel_name + "_" + str(idx_kernel + 1) + ".p_hbm:HBM[" + str(2 * idx_kernel) + ":" + str(2 * idx_kernel + 1) + "]\n")
+                # cfgfile.write("sp=" + kernel_name + "_" + str(idx_kernel + 1) + ".p_hbm:HBM[" + str(2 * idx_kernel) + ":" + str(2 * idx_kernel + 1) + "]\n")
+                cfgfile.write("sp=" + kernel_name + "_" + str(idx_kernel + 1) + ".p_hbm:HBM[0:" + str(num_kernel) + "]\n")
+                # cfgfile.write("sp=" + kernel_name + "_" + str(idx_kernel + 1) + ".p_hbm:HBM[" + str(idx_kernel) + "]\n")
             cfgfile.write("nk=" + kernel_name + ":" + str(num_kernel) + "\n")
             if auto_alloc:
                 slr_dense = float(row[4])
@@ -44,8 +46,13 @@ def main():
                  "prop=run.impl_1.{STEPS.PHYS_OPT_DESIGN.ARGS.MORE OPTIONS}={-slr_crossing_opt -tns_cleanup}\n", \
                  "prop=run.impl_1.{STEPS.ROUTE_DESIGN.ARGS.MORE OPTIONS}={-ultrathreads}\n", \
                  "prop=run.impl_1.{STEPS.POST_ROUTE_PHYS_OPT_DESIGN.IS_ENABLED}=true\n", \
-                 "prop=run.impl_1.{STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.MORE OPTIONS}={-critical_cell_opt -rewire -hold_fix -sll_reg_hold_fix -retime}"]
+                 "prop=run.impl_1.{STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.MORE OPTIONS}={-critical_cell_opt -rewire -hold_fix -sll_reg_hold_fix -retime}\n"]
             cfgfile.writelines(vivado_cfg_lines)
+
+            cfgfile.write("[advanced]\n")
+            advanced_cfg_lines = \
+                ["param=compiler.errorOnHoldViolation=FALSE\n"]
+            cfgfile.writelines(advanced_cfg_lines)
 
             cfgfile.close()
 
